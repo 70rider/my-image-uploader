@@ -27,6 +27,28 @@ if uploaded_file is not None:
             "Accept": "application/vnd.github.v3+json"
         }
         
+        # 1. 既存のファイルがあるか確認して、あればsha（ID）を取得する
+        get_url = f"https://api.github.com/repos/{REPO_NAME}/contents/images/{file_name}"
+        get_res = requests.get(get_url, headers=headers)
+        
+        sha = None
+        if get_res.status_code == 200:
+            sha = get_res.json().get("sha")
+
+        # 2. アップロード用のデータを作成
+        data = {
+            "message": f"Upload {file_name}",
+            "content": content,
+            "branch": BRANCH
+        }
+        
+        # もし既存ファイルがあれば、データにshaを追加する
+        if sha:
+            data["sha"] = sha
+
+        # 3. あとは同じ（requests.putを実行）
+        response = requests.put(url, json=data, headers=headers)
+        
         data = {
             "message": f"Upload {file_name} via Streamlit",
             "content": content,
@@ -50,4 +72,5 @@ if uploaded_file is not None:
             st.subheader("Markdown用コード")
             st.code(f"![{file_name}]({raw_url})", language="markdown")
         else:
+
             st.error(f"失敗しました: {response.json().get('message')}")
