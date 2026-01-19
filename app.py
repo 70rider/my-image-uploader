@@ -4,7 +4,7 @@ import base64
 
 st.title("GitHub画像アップローダー")
 
-# 1. Secretsから情報を取得（ブラウザからは絶対に見えない）
+# 1. Secretsから情報を取得
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = "70rider/webcamera"
 BRANCH = "main"
@@ -28,49 +28,32 @@ if uploaded_file is not None:
         }
         
         # 1. 既存のファイルがあるか確認して、あればsha（ID）を取得する
-        get_url = f"https://api.github.com/repos/{REPO_NAME}/contents/images/{file_name}"
-        get_res = requests.get(get_url, headers=headers)
-        
+        get_res = requests.get(url, headers=headers)
         sha = None
         if get_res.status_code == 200:
             sha = get_res.json().get("sha")
 
-        # 2. アップロード用のデータを作成
-        data = {
-            "message": f"Upload {file_name}",
-            "content": content,
-            "branch": BRANCH
-        }
-        
-        # もし既存ファイルがあれば、データにshaを追加する
-        if sha:
-            data["sha"] = sha
-
-        # 3. あとは同じ（requests.putを実行）
-        response = requests.put(url, json=data, headers=headers)
-        
+        # 2. アップロード用のデータを作成（ここにshaを含める）
         data = {
             "message": f"Upload {file_name} via Streamlit",
             "content": content,
             "branch": BRANCH
         }
+        
+        if sha:
+            data["sha"] = sha
 
-        # API実行
+        # 3. API実行（PUTリクエストは1回だけでOK）
         response = requests.put(url, json=data, headers=headers)
 
         if response.status_code in [200, 201]:
-            # アップロードしたファイルの直リンクURLを生成
             raw_url = f"https://raw.githubusercontent.com/{REPO_NAME}/{BRANCH}/images/{file_name}"
-            
             st.success("GitHubへのアップロードが完了しました！")
             
-            # URLを表示してコピーしやすくする
             st.code(raw_url, language="text")
             st.markdown(f"[画像をブラウザで確認する]({raw_url})")
             
-            # Markdown用の貼り付けコードもついでに表示
             st.subheader("Markdown用コード")
             st.code(f"![{file_name}]({raw_url})", language="markdown")
         else:
-
             st.error(f"失敗しました: {response.json().get('message')}")
